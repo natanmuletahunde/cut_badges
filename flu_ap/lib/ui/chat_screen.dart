@@ -1,4 +1,7 @@
+import 'package:flu_ap/controller/chat_controller.dart';
+import 'package:flu_ap/model/message.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get_state_manager/get_state_manager.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 class ChatScreen extends StatefulWidget {
@@ -14,6 +17,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   TextEditingController msgInputController = TextEditingController();
   late IO.Socket socket;
+  ChatController chatController = ChatController();
 
   @override
   void initState() {
@@ -34,15 +38,7 @@ class _ChatScreenState extends State<ChatScreen> {
     socket.onDisconnect((_) => print("Disconnected"));
   }
 
-  void sendMessage(String text) {
-    if (text.trim().isEmpty || !socket.connected) return;
 
-    var messageJson = {
-      "message": text,
-      "sentByMe": socket.id,
-    };
-    socket.emit('message', messageJson);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,13 +46,22 @@ class _ChatScreenState extends State<ChatScreen> {
       backgroundColor: black,
       body: Column(
         children: [
+        Expanded(child: Container(
+          child: Text('Connected user ${chatController.connectedUser}',),
+        ) ),
           Expanded(
+
             flex: 9,
-            child: ListView.builder(
-              itemCount: 10,
-              itemBuilder: (context, index) {
-                return MessageItem(sentByMe: true);
-              },
+            child: Obx(
+              ()=> ListView.builder(
+                itemCount: chatController.chatMessages.length,
+                itemBuilder: (context, index) {
+                  var  currentItem = chatController.chatMessages[index];
+                return MessageItem(
+                  sentByMe:currentItem.sentByMe==socket.id,
+                  message: currentItem.message,);
+                },
+              ),
             ),
           ),
           Expanded(
@@ -98,16 +103,28 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
   
+  void sendMessage(String text) {
+    if (text.trim().isEmpty || !socket.connected) return;
+
+    var messageJson = {
+      "message": text,
+      "sentByMe": socket.id,
+    };
+    socket.emit('message', messageJson);
+      chatController.chatMessages.add(Message.fromJson(messageJson));
+  }
   void setSocketListeners() {
     socket.on('message-received', (data){
       print(data);
+      chatController.chatMessages.add(Message.fromJson(data));
     });
   }
 }
 
 class MessageItem extends StatelessWidget {
-  const MessageItem({super.key, required this.sentByMe});
+  const MessageItem({super.key, required this.sentByMe, required this.message});
   final bool sentByMe;
+  final String message ;
 
   @override
   Widget build(BuildContext context) {
@@ -128,7 +145,7 @@ class MessageItem extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              'Hello',
+              message,
               style: TextStyle(color: Colors.white),
             ),
           ),
