@@ -18,7 +18,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     // TODO: implement initState
-   socket = IO.io('http://10.0.2.2:4000',
+   socket = IO.io('http://localhost:4000',
     IO.OptionBuilder()
       .setTransports(['websocket']) 
       .disableAutoConnect()  
