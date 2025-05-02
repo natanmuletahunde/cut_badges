@@ -17,81 +17,94 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void initState() {
-    // TODO: implement initState
-   socket = IO.io('http://localhost:4000',
-    IO.OptionBuilder()
-      .setTransports(['websocket']) 
-      .disableAutoConnect()  
-      .build());
-    socket.connect();
     super.initState();
+    // Replace with your machine's IP
+    socket = IO.io('http://10.240.212.139:4000',
+        IO.OptionBuilder()
+            .setTransports(['websocket'])
+            .disableAutoConnect()
+            .build());
+    socket.connect();
+    setSocketListeners();
+
+    socket.onConnect((_) {
+      print("Connected to socket server");
+    });
+
+    socket.onDisconnect((_) => print("Disconnected"));
   }
+
+  void sendMessage(String text) {
+    if (text.trim().isEmpty || !socket.connected) return;
+
+    var messageJson = {
+      "message": text,
+      "sentByMe": socket.id,
+    };
+    socket.emit('message', messageJson);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: black,
-      body: Container(
-        child: Column(
-          children: [
-            Expanded(flex: 9, child: Container(
-              child: Container(
-                child: ListView.builder( 
-                  itemCount: 10,
-                  itemBuilder:(context,index){
-                  return MessageItem(sentByMe: true,);
-                }),
-              ),
-            )),
-            Expanded(
-              child: Container(
-                padding: EdgeInsets.all(10),
-                child: TextField(
-                  style: TextStyle(color: Colors.white),
-                  cursorColor: purple,
-                  controller: msgInputController,
-                  decoration: InputDecoration(
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white),
+      body: Column(
+        children: [
+          Expanded(
+            flex: 9,
+            child: ListView.builder(
+              itemCount: 10,
+              itemBuilder: (context, index) {
+                return MessageItem(sentByMe: true);
+              },
+            ),
+          ),
+          Expanded(
+            child: Container(
+              padding: EdgeInsets.all(10),
+              child: TextField(
+                style: TextStyle(color: Colors.white),
+                cursorColor: purple,
+                controller: msgInputController,
+                decoration: InputDecoration(
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  suffixIcon: Container(
+                    margin: EdgeInsets.only(right: 10),
+                    decoration: BoxDecoration(
+                      color: purple,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    suffixIcon: Container(
-                      margin: EdgeInsets.only(right: 10),
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: purple,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: IconButton(
-                        onPressed: () {
-                          sendMessage(msgInputController.text);
-                          msgInputController.clear();
-                        },
-                        icon: Icon(Icons.send, color: Colors.white),
-                      ),
+                    child: IconButton(
+                      icon: Icon(Icons.send, color: Colors.white),
+                      onPressed: () {
+                        sendMessage(msgInputController.text);
+                        msgInputController.clear();
+                      },
                     ),
                   ),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
   
-void sendMessage(String text) {
-  var messageJson = {
-    "message": text,
-    "sentByMe": socket.id,
-  };
-  socket.emit('message', messageJson); // Send the full JSON
+  void setSocketListeners() {
+    socket.on('message-received', (data){
+      print(data);
+    });
+  }
 }
 
-}
 class MessageItem extends StatelessWidget {
   const MessageItem({super.key, required this.sentByMe});
   final bool sentByMe;
@@ -99,7 +112,7 @@ class MessageItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final now = TimeOfDay.now();
-    final time = now.format(context); // Get current time in readable format
+    final time = now.format(context);
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
